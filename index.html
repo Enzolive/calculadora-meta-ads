@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Projeção — Meta Ads</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --series-1-soft: rgba(42,120,214,0.14);
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-1-soft: rgba(57,135,229,0.18);
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    line-height: 1.45;
+    padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { color: var(--text-secondary); font-size: 14px; margin-top: 2px; }
+
+  .tabs { display: flex; gap: 6px; margin-top: 18px; border-bottom: 1px solid var(--baseline); }
+  .tabs button {
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 9px 18px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+  }
+  .tabs button.on { color: var(--series-1); border-bottom-color: var(--series-1); }
+
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; margin-top: 18px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .card + .card { margin-top: 16px; }
+  .card h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); margin-bottom: 14px; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .field .hint { font-weight: 400; color: var(--text-muted); font-size: 12px; }
+  input[type="number"], select {
+    width: 100%;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text-primary);
+    background: var(--page);
+    border: 1px solid var(--baseline);
+    border-radius: 7px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .seg { display: flex; border: 1px solid var(--baseline); border-radius: 7px; overflow: hidden; }
+  .seg button {
+    flex: 1;
+    padding: 7px 4px;
+    font: inherit;
+    font-size: 13px;
+    background: var(--page);
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--baseline); }
+  .seg button.on { background: var(--series-1); color: #fff; font-weight: 600; }
+
+  details.estados { border: 1px solid var(--baseline); border-radius: 7px; padding: 8px 10px; background: var(--page); }
+  details.estados summary { font-size: 13px; cursor: pointer; color: var(--text-secondary); }
+  .uf-region { margin-top: 8px; }
+  .uf-region .rname { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .05em; }
+  .uf-grid { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; }
+  .uf-grid label { font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+  .aud-box { margin-top: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+  .aud-box .num { font-size: 26px; font-weight: 700; }
+  .aud-box .lbl { font-size: 12px; color: var(--text-secondary); }
+  .meter { height: 8px; border-radius: 4px; background: var(--grid); margin-top: 8px; overflow: hidden; }
+  .meter > div { height: 100%; border-radius: 4px; background: var(--series-1); transition: width .25s; }
+  .meter-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 700px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi {
+    background: var(--page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .kpi .lbl { font-size: 11.5px; color: var(--text-secondary); font-weight: 600; }
+  .kpi .val { font-size: 21px; font-weight: 700; margin-top: 2px; }
+  .kpi .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+  .kpi.hero { grid-column: span 2; border-color: var(--series-1); }
+  .kpi.hero .val { font-size: 30px; color: var(--series-1); }
+
+  .alerts { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .alert { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 9px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--page); }
+  .alert .ic { font-weight: 700; flex-shrink: 0; }
+  .alert.warn .ic { color: var(--warning); }
+  .alert.serious .ic { color: var(--serious); }
+  .alert.crit .ic { color: var(--critical); }
+  .alert.ok .ic { color: var(--good); }
+
+  .chart-card h2 { margin-bottom: 4px; }
+  .chart-sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 10px; }
+  #chart { width: 100%; height: auto; display: block; }
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.14);
+    padding: 8px 11px;
+    font-size: 12.5px;
+    z-index: 10;
+    display: none;
+    min-width: 180px;
+  }
+  .tooltip .tt-day { font-weight: 700; margin-bottom: 3px; }
+  .tooltip .tt-row { display: flex; justify-content: space-between; gap: 14px; color: var(--text-secondary); }
+  .tooltip .tt-row b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  table.detail { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  table.detail th { text-align: right; font-weight: 600; color: var(--text-secondary); padding: 5px 8px; border-bottom: 1px solid var(--grid); }
+  table.detail th:first-child, table.detail td:first-child { text-align: left; }
+  table.detail td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  details.tbl summary { font-size: 13px; color: var(--text-secondary); cursor: pointer; margin-top: 12px; }
+
+  footer { margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Calculadora de Projeção — Meta Ads</h1>
+    <p>Simulação de resultados com curva de saturação de público e fadiga de anúncio, sem depender da Meta.</p>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button data-t="wa" class="on">💬 Conversas WhatsApp</button>
+    <button data-t="geral">Projeção geral</button>
+  </div>
+
+  <div class="layout">
+    <div>
+
+      <div class="card">
+        <h2>Público (segmentação)</h2>
+
+        <div class="field">
+          <label>Localização</label>
+          <div class="seg" id="segGeo">
+            <button data-v="br" class="on">Brasil inteiro</button>
+            <button data-v="uf">Estados específicos</button>
+          </div>
+        </div>
+
+        <div class="field" id="ufWrap" style="display:none">
+          <details class="estados" open>
+            <summary>Selecionar estados (<span id="ufCount">0</span> selecionados)</summary>
+            <div id="ufList"></div>
+          </details>
+        </div>
+
+        <div class="field">
+          <label>Gênero</label>
+          <div class="seg" id="segGen">
+            <button data-v="all" class="on">Todos</button>
+            <button data-v="f">Mulheres</button>
+            <button data-v="m">Homens</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Idade</label>
+          <div class="row2">
+            <select id="ageMin"></select>
+            <select id="ageMax"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Refinamento por interesses <span class="hint">(reduz o público e encarece o CPM)</span></label>
+          <select id="interest">
+            <option value="1">Sem refinamento (público aberto)</option>
+            <option value="0.55">Amplo — 1 interesse geral</option>
+            <option value="0.28" selected>Moderado — interesses combinados</option>
+            <option value="0.10">Restrito — nicho específico</option>
+            <option value="0.03">Muito restrito — micro-nicho</option>
+          </select>
+        </div>
+
+        <div class="aud-box">
+          <div class="lbl">Público estimado</div>
+          <div class="num" id="audNum">—</div>
+          <div class="meter"><div id="audMeter" style="width:50%"></div></div>
+          <div class="meter-scale"><span>Específico</span><span id="audVerdict"></span><span>Amplo</span></div>
+          <div class="lbl" id="cpmAdj" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="card" id="waCard">
+        <h2>Campanha — Conversas no WhatsApp</h2>
+
+        <div class="row2">
+          <div class="field">
+            <label>Orçamento diário (R$)</label>
+            <input type="number" id="waBudget" value="100" min="1" step="10">
+          </div>
+          <div class="field">
+            <label>Duração (dias)</label>
+            <input type="number" id="waDays" value="30" min="1" max="180" step="1">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>CPM estimado (R$)</label>
+            <input type="number" id="waCpm" value="22" min="1" step="1">
+          </div>
+          <div class="field">
+            <label>CTR (%) <span class="hint">cliques no anúncio</span></label>
+            <input type="number" id="waCtr" value="1.5" min="0.05" step="0.1">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>Conversão de leads (%) <span class="hint">ex.: 100 mensagens × 10% = 10 fechamentos</span></label>
+            <input type="number" id="waConv" value="10" min="0" max="100" step="1">
+          </div>
+          <div class="field">
+            <label>Ticket médio (R$)</label>
+            <input type="number" id="waTicket" value="250" min="0" step="10">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="genCard" style="display:none">
+        <h2>Campanha</h2>
+
+        <div class="field">
+          <label>Objetivo <span class="hint">(preenche CPM/CTR/conversão de referência)</span></label>
+          <select id="objetivo">
+            <option value="leads" selected>Cadastros / Leads</option>
+            <option value="compras">Compras (e-commerce)</option>
+            <option value="trafego">Tráfego (cliques no link)</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>Orçamento diário (R$)</label>
+            <input type="number" id="budget" value="100" min="1" step="10">
+          </div>
+          <div class="field">
+            <label>Duração (dias)</label>
+            <input type="number" id="days" value="30" min="1" max="180" step="1">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>CPM estimado (R$) <span class="hint">custo por 1.000 impressões</span></label>
+          <input type="number" id="cpm" value="25" min="1" step="1">
+        </div>
+
+        <div class="field">
+          <label>Como estimar o resultado?</label>
+          <div class="seg" id="segMode">
+            <button data-v="funil" class="on">Funil (CTR × conversão)</button>
+            <button data-v="cpr">Custo por resultado direto</button>
+          </div>
+        </div>
+
+        <div class="row2" id="funilFields">
+          <div class="field">
+            <label>CTR (%) <span class="hint">cliques no link</span></label>
+            <input type="number" id="ctr" value="1.2" min="0.05" step="0.1">
+          </div>
+          <div class="field">
+            <label>Conversão da página (%)</label>
+            <input type="number" id="conv" value="12" min="0.1" step="0.5">
+          </div>
+        </div>
+
+        <div class="field" id="cprField" style="display:none">
+          <label>Custo por resultado (R$)</label>
+          <input type="number" id="cpr" value="15" min="0.1" step="1">
+        </div>
+      </div>
+
+    </div>
+
+    <div>
+
+      <div class="card">
+        <h2><span id="resTitle">Projeção estimada</span> — <span id="perLabel">30 dias</span></h2>
+        <div class="kpis" id="kpis"></div>
+        <div class="alerts" id="alerts"></div>
+      </div>
+
+      <div class="card chart-card">
+        <h2 id="chartTitle">Conversas acumuladas por dia</h2>
+        <div class="chart-sub">A faixa sombreada é o intervalo estimado (como a Meta, a projeção é uma faixa, não um número exato). A curva achata quando o público satura.</div>
+        <svg id="chart" viewBox="0 0 660 300" role="img" aria-label="Gráfico de linha: valores acumulados por dia, com faixa mínima e máxima"></svg>
+        <details class="tbl">
+          <summary>Ver tabela semanal (acessível)</summary>
+          <table class="detail" id="weekTable"></table>
+        </details>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    Simulação educativa: os números reais da Meta variam com leilão, criativo e concorrência. Público-base por estado derivado do Censo 2022 × penetração estimada da Meta (~62% da população adulta). Modelo de alcance: saturação exponencial sobre a parcela ativa do público (~35%), com frequência mínima natural do leilão (a entrega concentra impressões — nunca fica em 1×), CPM ajustado pelo refinamento de interesses e fadiga de CTR/pressão de CPM quando a frequência passa de 3.
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+"use strict";
+
+/* ---------- DADOS BASE ---------- */
+
+// População 2022 (milhões) × fator 0.62 = público Meta 18+ estimado por UF
+var UFS = {
+  "Norte":        [["AC",0.83],["AP",0.73],["AM",3.94],["PA",8.12],["RO",1.58],["RR",0.64],["TO",1.51]],
+  "Nordeste":     [["AL",3.13],["BA",14.14],["CE",8.79],["MA",6.78],["PB",3.97],["PE",9.06],["PI",3.27],["RN",3.30],["SE",2.21]],
+  "Centro-Oeste": [["DF",2.82],["GO",7.06],["MT",3.66],["MS",2.76]],
+  "Sudeste":      [["ES",3.83],["MG",20.54],["RJ",16.05],["SP",44.41]],
+  "Sul":          [["PR",11.44],["RS",10.88],["SC",7.61]]
+};
+var META_PENETRATION = 0.62;
+
+// Distribuição etária estimada dos usuários Meta adultos no Brasil
+var AGE_BRACKETS = [
+  { min: 18, max: 24, share: 0.17 },
+  { min: 25, max: 34, share: 0.26 },
+  { min: 35, max: 44, share: 0.23 },
+  { min: 45, max: 54, share: 0.15 },
+  { min: 55, max: 64, share: 0.11 },
+  { min: 65, max: 99, share: 0.08 }
+];
+var GENDER_SHARE = { all: 1, f: 0.52, m: 0.48 };
+
+// Parcela do público que realmente entra no leilão (usuários ativos/alcançáveis)
+var REACHABLE_SHARE = 0.35;
+
+// Quanto mais restrito o interesse, mais caro o leilão (multiplicador de CPM)
+var INTEREST_CPM_MULT = { "1": 1, "0.55": 1.10, "0.28": 1.25, "0.10": 1.45, "0.03": 1.70 };
+
+// Frequência natural que a entrega produz ao longo do tempo — nunca fica em 1×
+function naturalFreq(d) { return 1.15 + 0.5 * Math.log(d); }
+
+// Presets por objetivo (guia geral): CPM (R$), CTR (%), conversão (%), CPR de referência (R$)
+var PRESETS = {
+  leads:   { cpm: 25, ctr: 1.2, conv: 12,  cpr: 15,  refCpr: [8, 30] },
+  compras: { cpm: 35, ctr: 1.0, conv: 1.5, cpr: 60,  refCpr: [30, 120] },
+  trafego: { cpm: 12, ctr: 1.8, conv: 100, cpr: 0.8, refCpr: [0.4, 2] }
+};
+var RESULT_NAME = { leads: "Leads", compras: "Compras", trafego: "Cliques", custom: "Resultados" };
+var WA_CPC_REF = [4, 15]; // faixa típica de custo por conversa (R$) no Brasil
+
+/* ---------- ESTADO ---------- */
+var state = { tab: "wa", geo: "br", ufs: new Set(), gender: "all", mode: "funil", objetivo: "leads" };
+
+/* ---------- HELPERS ---------- */
+function $(id) { return document.getElementById(id); }
+var fmtInt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
+var fmtBRLfmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL2(v) { return fmtBRLfmt.format(v); }
+function fmtCompact(v) {
+  if (v >= 1e6) return (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi";
+  if (v >= 1e3) return (v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil";
+  return fmtInt.format(v);
+}
+function num(id, fallback) {
+  var el = $(id);
+  var v = parseFloat(el.value);
+  return (el.value !== "" && isFinite(v)) ? v : fallback;
+}
+
+/* ---------- UI: montar controles ---------- */
+
+// Guias
+$("tabs").querySelectorAll("button").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    $("tabs").querySelectorAll("button").forEach(function (b) { b.classList.remove("on"); });
+    btn.classList.add("on");
+    state.tab = btn.dataset.t;
+    $("waCard").style.display = state.tab === "wa" ? "" : "none";
+    $("genCard").style.display = state.tab === "geral" ? "" : "none";
+    update();
+  });
+});
+
+// Estados
+(function buildUFs() {
+  var wrap = $("ufList");
+  Object.keys(UFS).forEach(function (region) {
+    var div = document.createElement("div");
+    div.className = "uf-region";
+    div.innerHTML = '<div class="rname">' + region + '</div>';
+    var grid = document.createElement("div");
+    grid.className = "uf-grid";
+    UFS[region].forEach(function (pair) {
+      var uf = pair[0];
+      var lab = document.createElement("label");
+      lab.innerHTML = '<input type="checkbox" value="' + uf + '"> ' + uf;
+      lab.querySelector("input").addEventListener("change", function (e) {
+        if (e.target.checked) state.ufs.add(uf); else state.ufs.delete(uf);
+        $("ufCount").textContent = state.ufs.size;
+        update();
+      });
+      grid.appendChild(lab);
+    });
+    div.appendChild(grid);
+    wrap.appendChild(div);
+  });
+})();
+
+// Idade — ano a ano, como na Meta (18, 19, 20 … 65+)
+(function buildAges() {
+  for (var a = 18; a <= 64; a++) {
+    $("ageMin").add(new Option(String(a), a));
+    $("ageMax").add(new Option(String(a), a));
+  }
+  $("ageMin").add(new Option("65+", 65));
+  $("ageMax").add(new Option("65+", 99));
+  $("ageMin").value = 18;
+  $("ageMax").value = 99;
+})();
+
+// Segmented controls
+function bindSeg(id, key, after) {
+  $(id).querySelectorAll("button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      $(id).querySelectorAll("button").forEach(function (b) { b.classList.remove("on"); });
+      btn.classList.add("on");
+      state[key] = btn.dataset.v;
+      if (after) after(btn.dataset.v);
+      update();
+    });
+  });
+}
+bindSeg("segGeo", "geo", function (v) { $("ufWrap").style.display = v === "uf" ? "" : "none"; });
+bindSeg("segGen", "gender");
+bindSeg("segMode", "mode", function (v) {
+  $("funilFields").style.display = v === "funil" ? "" : "none";
+  $("cprField").style.display = v === "cpr" ? "" : "none";
+});
+
+// Objetivo → presets (guia geral)
+$("objetivo").addEventListener("change", function () {
+  state.objetivo = $("objetivo").value;
+  var p = PRESETS[state.objetivo];
+  if (p) {
+    $("cpm").value = p.cpm; $("ctr").value = p.ctr;
+    $("conv").value = p.conv; $("cpr").value = p.cpr;
+  }
+  update();
+});
+
+// Inputs numéricos e selects
+["budget","days","cpm","ctr","conv","cpr","ageMin","ageMax","interest",
+ "waBudget","waDays","waCpm","waCtr","waConv","waTicket"
+].forEach(function (id) { $(id).addEventListener("input", update); });
+
+/* ---------- CÁLCULO DO PÚBLICO ---------- */
+function audienceSize() {
+  var basePop = 0;
+  Object.keys(UFS).forEach(function (region) {
+    UFS[region].forEach(function (pair) {
+      if (state.geo === "br" || state.ufs.has(pair[0])) basePop += pair[1];
+    });
+  });
+  var base = basePop * 1e6 * META_PENETRATION;
+
+  // Interpola a fração de cada faixa etária coberta pelo intervalo escolhido
+  var aMin = parseFloat($("ageMin").value);
+  var aMax = Math.max(parseFloat($("ageMax").value), aMin);
+  var ageShare = 0;
+  AGE_BRACKETS.forEach(function (b) {
+    var overlap = Math.min(aMax, b.max) - Math.max(aMin, b.min) + 1;
+    if (overlap > 0) ageShare += b.share * overlap / (b.max - b.min + 1);
+  });
+
+  return Math.round(base * ageShare * GENDER_SHARE[state.gender] * parseFloat($("interest").value));
+}
+
+/* ---------- SIMULAÇÃO DIA A DIA ---------- */
+// p: { budget, days, cpm, ctrPct, mode: "funil"|"cpr", convPct, cpr }
+function simulate(audience, p) {
+  var budget = Math.max(1, p.budget);
+  var days = Math.min(180, Math.max(1, Math.round(p.days)));
+  var cpmBase = Math.max(0.5, p.cpm) * (p.cpmMult || 1);
+  var ctrBase = Math.max(0.01, p.ctrPct) / 100;
+  var conv = Math.max(0.001, p.convPct) / 100;
+  var cprDirect = Math.max(0.05, p.cpr || 15);
+
+  var A = Math.max(1000, audience);
+  var Aeff = Math.max(1000, A * REACHABLE_SHARE); // só a parcela ativa entra no leilão
+  var cumImp = 0, cumClicks = 0, cumResults = 0, cumSpend = 0;
+  var daily = [];
+
+  // A entrega concentra impressões: alcance = impressões ÷ freq. natural, saturando na parcela ativa
+  function reachAt(imps, d) {
+    if (imps <= 0) return 0;
+    var natural = imps / naturalFreq(d);
+    return Aeff * (1 - Math.exp(-natural / Aeff));
+  }
+
+  for (var d = 1; d <= days; d++) {
+    var reachSoFar = reachAt(cumImp, d);
+    var freq = reachSoFar > 0 ? cumImp / reachSoFar : naturalFreq(d);
+
+    // Saturação: acima de frequência 3, CPM sobe (leilão reaquecido) e CTR cai (fadiga)
+    var over = Math.max(0, freq - 3);
+    var cpmEff = cpmBase * Math.min(2, 1 + over * 0.10);
+    var ctrEff = ctrBase / (1 + over * 0.18);
+
+    var imp = (budget / cpmEff) * 1000;
+    cumImp += imp;
+    cumSpend += budget;
+
+    var clicks = imp * ctrEff;
+    cumClicks += clicks;
+
+    var results;
+    if (p.mode === "funil") {
+      results = clicks * conv;
+    } else {
+      results = (budget / cprDirect) / (1 + over * 0.16);
+    }
+    cumResults += results;
+
+    var reach = reachAt(cumImp, d);
+    daily.push({
+      day: d, spend: cumSpend, imp: cumImp, reach: reach,
+      freq: cumImp / Math.max(1, reach),
+      clicks: cumClicks, results: cumResults
+    });
+  }
+
+  return { daily: daily, days: days, budget: budget, audience: A, total: daily[daily.length - 1] };
+}
+
+function getParams() {
+  if (state.tab === "wa") {
+    return {
+      budget: num("waBudget", 100), days: num("waDays", 30),
+      cpm: num("waCpm", 22), ctrPct: num("waCtr", 1.5),
+      cpmMult: INTEREST_CPM_MULT[$("interest").value] || 1,
+      mode: "funil", convPct: 100, cpr: 8 // cada clique = 1 conversa iniciada
+    };
+  }
+  return {
+    budget: num("budget", 100), days: num("days", 30),
+    cpm: num("cpm", 25), ctrPct: num("ctr", 1.2),
+    cpmMult: INTEREST_CPM_MULT[$("interest").value] || 1,
+    mode: state.mode, convPct: num("conv", 12), cpr: num("cpr", 15)
+  };
+}
+
+/* ---------- RENDER: KPIs ---------- */
+function kpi(lbl, val, sub, hero) {
+  return '<div class="kpi' + (hero ? ' hero' : '') + '"><div class="lbl">' + lbl + '</div><div class="val">' + val + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>';
+}
+
+function freqAudienceAlerts(sim) {
+  var t = sim.total, alerts = [];
+  if (t.freq > 5) alerts.push(["crit", "✕", "Frequência " + t.freq.toFixed(1) + "× — público saturado. Aumente o público ou reduza orçamento/duração."]);
+  else if (t.freq > 3.8) alerts.push(["serious", "▲", "Frequência " + t.freq.toFixed(1) + "× — fadiga de anúncio provável na segunda metade. Prepare novos criativos."]);
+  if (sim.audience < 80000) alerts.push(["warn", "▲", "Público de " + fmtCompact(sim.audience) + " é pequeno — a entrega pode encarecer rápido. A Meta recomenda folga acima de ~100 mil."]);
+  if (sim.audience > 40000000) alerts.push(["warn", "▲", "Público muito amplo — sem refinamento, o algoritmo decide tudo; bom para escala, ruim para nicho."]);
+  return alerts;
+}
+
+function renderAlerts(alerts) {
+  $("alerts").innerHTML = alerts.map(function (a) {
+    return '<div class="alert ' + a[0] + '"><span class="ic">' + a[1] + '</span><span>' + a[2] + '</span></div>';
+  }).join("");
+}
+
+// ---- Guia WhatsApp ----
+function renderWA(sim) {
+  var t = sim.total;
+  var convs = t.results; // conversas iniciadas (= cliques no anúncio)
+  var lo = convs * 0.75, hi = convs * 1.25;
+  var convPct = num("waConv", 10) / 100;
+  var ticket = num("waTicket", 250);
+
+  var vendas = convs * convPct;
+  var fat = vendas * ticket;
+  var roas = t.spend > 0 ? fat / t.spend : 0;
+  var cpcv = convs > 0 ? t.spend / convs : 0;
+
+  $("resTitle").textContent = "Projeção — Conversas WhatsApp";
+  $("chartTitle").textContent = "Conversas acumuladas por dia";
+
+  $("kpis").innerHTML =
+    kpi("Conversas (mensagens)", fmtCompact(lo) + " – " + fmtCompact(hi), "investimento total " + fmtBRL2(t.spend), true) +
+    kpi("Custo por conversa", fmtBRL2(convs > 0 ? t.spend / hi : 0) + " – " + fmtBRL2(convs > 0 ? t.spend / lo : 0), "faixa estimada", true) +
+    kpi("Fechamentos", fmtCompact(vendas * 0.75) + " – " + fmtCompact(vendas * 1.25), "custo por venda ~" + (vendas > 0 ? fmtBRL2(t.spend / vendas) : "—")) +
+    kpi("Faturamento projetado", fmtCompact(fat * 0.75) + " – " + fmtCompact(fat * 1.25), "em R$ · ROAS ~" + roas.toFixed(1) + "×") +
+    kpi("Alcance", fmtCompact(t.reach), (100 * t.reach / sim.audience).toFixed(1) + "% do público · freq. " + t.freq.toFixed(1) + "×") +
+    kpi("Impressões", fmtCompact(t.imp), "CPM médio " + fmtBRL2(t.spend / t.imp * 1000));
+
+  var alerts = freqAudienceAlerts(sim);
+  if (cpcv > WA_CPC_REF[1]) alerts.push(["serious", "▲", "Custo por conversa projetado (" + fmtBRL2(cpcv) + ") acima da faixa típica no Brasil (" + fmtBRL2(WA_CPC_REF[0]) + "–" + fmtBRL2(WA_CPC_REF[1]) + "). Revise CPM ou CTR."]);
+  else alerts.push(["ok", "✓", "Custo por conversa projetado (" + fmtBRL2(cpcv) + ") dentro da faixa típica no Brasil (" + fmtBRL2(WA_CPC_REF[0]) + "–" + fmtBRL2(WA_CPC_REF[1]) + ")."]);
+  if (roas > 0 && roas < 1) alerts.push(["crit", "✕", "ROAS projetado " + roas.toFixed(1) + "× — a campanha não se paga com esse ticket/conversão. Melhore a conversão, o ticket ou o custo por conversa."]);
+  else if (roas >= 3) alerts.push(["ok", "✓", "ROAS projetado " + roas.toFixed(1) + "× — margem saudável para escalar."]);
+  if (vendas < 1 && convPct > 0) alerts.push(["warn", "▲", "Menos de 1 fechamento projetado no período — aumente orçamento, duração ou a conversão de leads."]);
+  renderAlerts(alerts);
+
+  $("perLabel").textContent = sim.days + " dia" + (sim.days > 1 ? "s" : "");
+}
+
+// ---- Guia geral ----
+function renderGeral(sim) {
+  var t = sim.total;
+  var name = RESULT_NAME[state.objetivo] || "Resultados";
+  var lo = t.results * 0.75, hi = t.results * 1.25;
+  var cpc = t.clicks > 0 ? t.spend / t.clicks : 0;
+
+  $("resTitle").textContent = "Projeção estimada";
+  $("chartTitle").textContent = name + " acumulados por dia";
+
+  $("kpis").innerHTML =
+    kpi(name + " estimados", fmtCompact(lo) + " – " + fmtCompact(hi), "investimento total " + fmtBRL2(t.spend), true) +
+    kpi("Custo por resultado", fmtBRL2(t.results > 0 ? t.spend / hi : 0) + " – " + fmtBRL2(t.results > 0 ? t.spend / lo : 0), "faixa estimada", true) +
+    kpi("Alcance", fmtCompact(t.reach), (100 * t.reach / sim.audience).toFixed(1) + "% do público") +
+    kpi("Impressões", fmtCompact(t.imp), "CPM médio " + fmtBRL2(t.spend / t.imp * 1000)) +
+    kpi("Frequência", t.freq.toFixed(1) + "×", "impressões por pessoa") +
+    kpi("Cliques", fmtCompact(t.clicks), "CPC " + fmtBRL2(cpc));
+
+  var alerts = freqAudienceAlerts(sim);
+  var p = PRESETS[state.objetivo];
+  var cprMid = t.results > 0 ? t.spend / t.results : Infinity;
+  if (p && cprMid > p.refCpr[1]) alerts.push(["serious", "▲", "Custo por resultado projetado (" + fmtBRL2(cprMid) + ") acima da faixa típica do objetivo (" + fmtBRL2(p.refCpr[0]) + "–" + fmtBRL2(p.refCpr[1]) + "). Revise CPM/CTR/conversão."]);
+  else if (p && cprMid <= p.refCpr[1]) alerts.push(["ok", "✓", "Custo por resultado projetado (" + fmtBRL2(cprMid) + ") dentro da faixa típica do objetivo."]);
+  renderAlerts(alerts);
+
+  $("perLabel").textContent = sim.days + " dia" + (sim.days > 1 ? "s" : "");
+}
+
+/* ---------- RENDER: público ---------- */
+function renderAudience(aud) {
+  $("audNum").textContent = fmtCompact(aud) + " pessoas";
+  // escala log de 10 mil a 100 mi
+  var pct = Math.max(0, Math.min(100, (Math.log10(Math.max(10000, aud)) - 4) * 25));
+  $("audMeter").style.width = pct + "%";
+  $("audVerdict").textContent = aud < 80000 ? "muito específico" : aud < 1000000 ? "bem definido" : aud < 20000000 ? "amplo" : "muito amplo";
+  var mult = INTEREST_CPM_MULT[$("interest").value] || 1;
+  $("cpmAdj").textContent = mult > 1
+    ? "Refinamento encarece o leilão: CPM ×" + mult.toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+    : "Sem ajuste de CPM (público aberto)";
+}
+
+/* ---------- RENDER: gráfico ---------- */
+var M = { top: 14, right: 14, bottom: 30, left: 52 };
+var W = 660, H = 300;
+
+function seriesName() {
+  return state.tab === "wa" ? "Conversas" : (RESULT_NAME[state.objetivo] || "Resultados");
+}
+
+function renderChart(sim) {
+  var svg = $("chart");
+  var d = sim.daily;
+  var iw = W - M.left - M.right, ih = H - M.top - M.bottom;
+  var maxY = Math.max(1, d[d.length - 1].results * 1.25);
+  function x(day) { return M.left + (day - 1) / Math.max(1, sim.days - 1) * iw; }
+  function y(v) { return M.top + ih - (v / maxY) * ih; }
+
+  var css = getComputedStyle(document.documentElement);
+  var cGrid = css.getPropertyValue("--grid").trim();
+  var cBase = css.getPropertyValue("--baseline").trim();
+  var cMut = css.getPropertyValue("--text-muted").trim();
+  var cS1 = css.getPropertyValue("--series-1").trim();
+  var cSoft = css.getPropertyValue("--series-1-soft").trim();
+
+  var g = "";
+  for (var i = 0; i <= 4; i++) {
+    var v = maxY / 4 * i, yy = y(v);
+    g += '<line x1="' + M.left + '" x2="' + (W - M.right) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + cGrid + '" stroke-width="1"/>';
+    g += '<text x="' + (M.left - 8) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" fill="' + cMut + '" style="font-variant-numeric:tabular-nums">' + fmtCompact(v) + '</text>';
+  }
+  var step = sim.days <= 10 ? 1 : sim.days <= 35 ? 7 : 14;
+  for (var day = 1; day <= sim.days; day += step) {
+    g += '<text x="' + x(day) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + cMut + '">d' + day + '</text>';
+  }
+  g += '<line x1="' + M.left + '" x2="' + (W - M.right) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="' + cBase + '" stroke-width="1"/>';
+
+  var ptsHi = d.map(function (p) { return x(p.day) + "," + y(p.results * 1.25); }).join(" ");
+  var ptsLo = d.slice().reverse().map(function (p) { return x(p.day) + "," + y(p.results * 0.75); }).join(" ");
+  var ptsMid = d.map(function (p) { return x(p.day) + "," + y(p.results); }).join(" ");
+  g += '<polygon points="' + ptsHi + ' ' + ptsLo + '" fill="' + cSoft + '"/>';
+  g += '<polyline points="' + ptsMid + '" fill="none" stroke="' + cS1 + '" stroke-width="2" stroke-linejoin="round"/>';
+
+  var lastPt = d[d.length - 1];
+  g += '<circle cx="' + x(lastPt.day) + '" cy="' + y(lastPt.results) + '" r="4" fill="' + cS1 + '" style="stroke:var(--surface-1)" stroke-width="2"/>';
+
+  g += '<line id="xhair" x1="0" x2="0" y1="' + M.top + '" y2="' + (H - M.bottom) + '" stroke="' + cBase + '" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>';
+  g += '<circle id="hoverDot" r="4.5" fill="' + cS1 + '" stroke-width="2" style="display:none;stroke:var(--surface-1)"/>';
+  g += '<rect x="' + M.left + '" y="' + M.top + '" width="' + iw + '" height="' + ih + '" fill="transparent" id="hitbox"/>';
+
+  svg.innerHTML = g;
+
+  var tt = $("tooltip");
+  var hit = $("hitbox");
+  hit.addEventListener("mousemove", function (ev) {
+    var r = svg.getBoundingClientRect();
+    var px = (ev.clientX - r.left) * (W / r.width);
+    var dayF = 1 + (px - M.left) / iw * (sim.days - 1);
+    var dayN = Math.max(1, Math.min(sim.days, Math.round(dayF)));
+    var p = d[dayN - 1];
+    $("xhair").setAttribute("x1", x(dayN)); $("xhair").setAttribute("x2", x(dayN));
+    $("xhair").style.display = "";
+    $("hoverDot").setAttribute("cx", x(dayN)); $("hoverDot").setAttribute("cy", y(p.results));
+    $("hoverDot").style.display = "";
+    tt.style.display = "block";
+    tt.style.left = Math.min(window.innerWidth - 200, ev.clientX + 14) + "px";
+    tt.style.top = (ev.clientY - 10) + "px";
+    var extra = "";
+    if (state.tab === "wa") {
+      var vendas = p.results * (num("waConv", 10) / 100);
+      extra = '<div class="tt-row"><span>Fechamentos</span><b>' + fmtCompact(vendas * 0.75) + " – " + fmtCompact(vendas * 1.25) + '</b></div>';
+    }
+    tt.innerHTML = '<div class="tt-day">Dia ' + dayN + '</div>' +
+      '<div class="tt-row"><span>' + seriesName() + '</span><b>' + fmtCompact(p.results * 0.75) + " – " + fmtCompact(p.results * 1.25) + '</b></div>' +
+      extra +
+      '<div class="tt-row"><span>Investido</span><b>' + fmtBRL2(p.spend) + '</b></div>' +
+      '<div class="tt-row"><span>Alcance</span><b>' + fmtCompact(p.reach) + '</b></div>' +
+      '<div class="tt-row"><span>Frequência</span><b>' + p.freq.toFixed(1) + '×</b></div>';
+  });
+  hit.addEventListener("mouseleave", function () {
+    tt.style.display = "none";
+    $("xhair").style.display = "none";
+    $("hoverDot").style.display = "none";
+  });
+}
+
+/* ---------- RENDER: tabela semanal ---------- */
+function renderTable(sim) {
+  var name = seriesName();
+  var rows = "<tr><th>Período</th><th>Investido</th><th>Alcance</th><th>Freq.</th><th>" + name + " (faixa)</th></tr>";
+  for (var day = 7; ; day += 7) {
+    var idx = Math.min(day, sim.days) - 1;
+    var p = sim.daily[idx];
+    rows += "<tr><td>até dia " + p.day + "</td><td>" + fmtBRL2(p.spend) + "</td><td>" + fmtCompact(p.reach) + "</td><td>" + p.freq.toFixed(1) + "×</td><td>" + fmtCompact(p.results * 0.75) + " – " + fmtCompact(p.results * 1.25) + "</td></tr>";
+    if (day >= sim.days) break;
+  }
+  $("weekTable").innerHTML = rows;
+}
+
+/* ---------- LOOP PRINCIPAL ---------- */
+function update() {
+  var aud = audienceSize();
+  renderAudience(aud);
+  if (state.geo === "uf" && state.ufs.size === 0) {
+    $("audNum").textContent = "selecione ao menos 1 estado";
+    $("kpis").innerHTML = "";
+    $("alerts").innerHTML = "";
+    $("chart").innerHTML = "";
+    $("weekTable").innerHTML = "";
+    return;
+  }
+  var sim = simulate(aud, getParams());
+  if (state.tab === "wa") renderWA(sim); else renderGeral(sim);
+  renderChart(sim);
+  renderTable(sim);
+}
+update();
+</script>
+</body>
+</html>
