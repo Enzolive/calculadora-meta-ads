@@ -259,23 +259,28 @@
         <div class="row2">
           <div class="field">
             <label>CPM estimado (R$)</label>
-            <input type="number" id="waCpm" value="22" min="1" step="1">
+            <input type="number" id="waCpm" value="25" min="1" step="1">
           </div>
           <div class="field">
-            <label>CTR (%) <span class="hint">cliques no anúncio</span></label>
-            <input type="number" id="waCtr" value="1.5" min="0.05" step="0.1">
+            <label>CTR (%) <span class="hint">cliques no link</span></label>
+            <input type="number" id="waCtr" value="0.6" min="0.05" step="0.05">
           </div>
         </div>
 
         <div class="row2">
           <div class="field">
-            <label>Conversão de leads (%) <span class="hint">ex.: 100 mensagens × 10% = 10 fechamentos</span></label>
-            <input type="number" id="waConv" value="10" min="0" max="100" step="1">
+            <label>Cliques que viram conversa (%) <span class="hint">nem todo clique manda mensagem</span></label>
+            <input type="number" id="waTalk" value="45" min="1" max="100" step="5">
           </div>
           <div class="field">
             <label>Ticket médio (R$)</label>
             <input type="number" id="waTicket" value="250" min="0" step="10">
           </div>
+        </div>
+
+        <div class="field">
+          <label>Conversão de leads (%) <span class="hint">das conversas, quantas fecham venda</span></label>
+          <input type="number" id="waConv" value="10" min="0" max="100" step="1">
         </div>
       </div>
 
@@ -357,7 +362,7 @@
   </div>
 
   <footer>
-    Simulação educativa: os números reais da Meta variam com leilão, criativo e concorrência. Público-base por estado derivado do Censo 2022 × penetração estimada da Meta (~62% da população adulta). Modelo de alcance: saturação exponencial sobre a parcela ativa do público (~35%), com frequência mínima natural do leilão (a entrega concentra impressões — nunca fica em 1×), CPM ajustado pelo refinamento de interesses e fadiga de CTR/pressão de CPM quando a frequência passa de 3.
+    Simulação educativa: os números reais da Meta variam com leilão, criativo e concorrência. Público-base por estado derivado do Censo 2022 × penetração estimada da Meta (~62% da população adulta). Modelo de alcance: saturação exponencial sobre a parcela ativa do público (~35%), com frequência mínima natural do leilão (a entrega concentra impressões — nunca fica em 1×), CPM ajustado pelo tamanho da segmentação (público estreito custa mais no leilão, amplo custa menos) e fadiga de CTR/pressão de CPM quando a frequência passa de 3.
   </footer>
 </div>
 
@@ -392,11 +397,17 @@ var GENDER_SHARE = { all: 1, f: 0.52, m: 0.48 };
 // Parcela do público que realmente entra no leilão (usuários ativos/alcançáveis)
 var REACHABLE_SHARE = 0.35;
 
-// Quanto mais restrito o interesse, mais caro o leilão (multiplicador de CPM)
-var INTEREST_CPM_MULT = { "1": 1, "0.55": 1.10, "0.28": 1.25, "0.10": 1.45, "0.03": 1.70 };
+// CPM em função do tamanho da segmentação: público estreito custa mais no leilão,
+// amplo custa menos. Ajuste SUAVE (0,85×–1,40×) para não distorcer o CPM informado —
+// o CPM que você digita continua sendo a âncora. Cobre geo, gênero, idade e interesses.
+var AUD_CPM_REF = 8000000, AUD_CPM_EXP = 0.10, AUD_CPM_MIN = 0.95, AUD_CPM_MAX = 1.35;
+function audienceCpmFactor(aud) {
+  var f = Math.pow(AUD_CPM_REF / Math.max(1000, aud), AUD_CPM_EXP);
+  return Math.min(AUD_CPM_MAX, Math.max(AUD_CPM_MIN, f));
+}
 
-// Frequência natural que a entrega produz ao longo do tempo — nunca fica em 1×
-function naturalFreq(d) { return 1.15 + 0.5 * Math.log(d); }
+// Frequência natural do leilão — suave, ~1,3× em 30 dias como campanhas reais amplas
+function naturalFreq(d) { return 1.08 + 0.06 * Math.log(d); }
 
 // Presets por objetivo (guia geral): CPM (R$), CTR (%), conversão (%), CPR de referência (R$)
 var PRESETS = {
@@ -507,9 +518,19 @@ $("objetivo").addEventListener("change", function () {
   update();
 });
 
+// Faixa etária coerente: a idade final nunca fica abaixo da inicial
+$("ageMin").addEventListener("change", function () {
+  if (parseFloat($("ageMax").value) < parseFloat($("ageMin").value)) $("ageMax").value = $("ageMin").value;
+  update();
+});
+$("ageMax").addEventListener("change", function () {
+  if (parseFloat($("ageMin").value) > parseFloat($("ageMax").value)) $("ageMin").value = $("ageMax").value;
+  update();
+});
+
 // Inputs numéricos e selects
-["budget","days","cpm","ctr","conv","cpr","ageMin","ageMax","interest",
- "waBudget","waDays","waCpm","waCtr","waConv","waTicket"
+["budget","days","cpm","ctr","conv","cpr","interest",
+ "waBudget","waDays","waCpm","waCtr","waTalk","waConv","waTicket"
 ].forEach(function (id) { $(id).addEventListener("input", update); });
 
 /* ---------- CÁLCULO DO PÚBLICO ---------- */
@@ -539,7 +560,7 @@ function audienceSize() {
 function simulate(audience, p) {
   var budget = Math.max(1, p.budget);
   var days = Math.min(180, Math.max(1, Math.round(p.days)));
-  var cpmBase = Math.max(0.5, p.cpm) * (p.cpmMult || 1);
+  var cpmBase = Math.max(0.5, p.cpm) * audienceCpmFactor(audience);
   var ctrBase = Math.max(0.01, p.ctrPct) / 100;
   var conv = Math.max(0.001, p.convPct) / 100;
   var cprDirect = Math.max(0.05, p.cpr || 15);
@@ -596,14 +617,12 @@ function getParams() {
     return {
       budget: num("waBudget", 100), days: num("waDays", 30),
       cpm: num("waCpm", 22), ctrPct: num("waCtr", 1.5),
-      cpmMult: INTEREST_CPM_MULT[$("interest").value] || 1,
-      mode: "funil", convPct: 100, cpr: 8 // cada clique = 1 conversa iniciada
+      mode: "funil", convPct: num("waTalk", 45), cpr: 8 // % dos cliques que viram conversa
     };
   }
   return {
     budget: num("budget", 100), days: num("days", 30),
     cpm: num("cpm", 25), ctrPct: num("ctr", 1.2),
-    cpmMult: INTEREST_CPM_MULT[$("interest").value] || 1,
     mode: state.mode, convPct: num("conv", 12), cpr: num("cpr", 15)
   };
 }
@@ -698,10 +717,13 @@ function renderAudience(aud) {
   var pct = Math.max(0, Math.min(100, (Math.log10(Math.max(10000, aud)) - 4) * 25));
   $("audMeter").style.width = pct + "%";
   $("audVerdict").textContent = aud < 80000 ? "muito específico" : aud < 1000000 ? "bem definido" : aud < 20000000 ? "amplo" : "muito amplo";
-  var mult = INTEREST_CPM_MULT[$("interest").value] || 1;
-  $("cpmAdj").textContent = mult > 1
-    ? "Refinamento encarece o leilão: CPM ×" + mult.toLocaleString("pt-BR", { minimumFractionDigits: 2 })
-    : "Sem ajuste de CPM (público aberto)";
+  var f = audienceCpmFactor(aud);
+  var fTxt = "×" + f.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  $("cpmAdj").textContent = f > 1.02
+    ? "Segmentação estreita encarece o CPM: " + fTxt
+    : f < 0.98
+      ? "Público amplo barateia o CPM: " + fTxt
+      : "CPM sem ajuste pela segmentação: " + fTxt;
 }
 
 /* ---------- RENDER: gráfico ---------- */
