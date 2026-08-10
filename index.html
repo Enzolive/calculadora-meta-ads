@@ -398,9 +398,10 @@ var GENDER_SHARE = { all: 1, f: 0.52, m: 0.48 };
 var REACHABLE_SHARE = 0.35;
 
 // CPM em função do tamanho da segmentação: público estreito custa mais no leilão,
-// amplo custa menos. Ajuste SUAVE (0,85×–1,40×) para não distorcer o CPM informado —
-// o CPM que você digita continua sendo a âncora. Cobre geo, gênero, idade e interesses.
-var AUD_CPM_REF = 8000000, AUD_CPM_EXP = 0.10, AUD_CPM_MIN = 0.95, AUD_CPM_MAX = 1.35;
+// amplo custa menos. Sensível em TODA a faixa (0,72×–1,60×), ancorado em ~20 mi de
+// pessoas = fator 1,0 (o CPM digitado vale para um público amplo típico). Assim
+// gênero e idade movem o custo mesmo em escala nacional. Cobre geo, gênero, idade e interesses.
+var AUD_CPM_REF = 20000000, AUD_CPM_EXP = 0.13, AUD_CPM_MIN = 0.72, AUD_CPM_MAX = 1.60;
 function audienceCpmFactor(aud) {
   var f = Math.pow(AUD_CPM_REF / Math.max(1000, aud), AUD_CPM_EXP);
   return Math.min(AUD_CPM_MAX, Math.max(AUD_CPM_MIN, f));
