@@ -362,7 +362,7 @@
   </div>
 
   <footer>
-    Simulação educativa: os números reais da Meta variam com leilão, criativo e concorrência. Público-base por estado derivado do Censo 2022 × penetração estimada da Meta (~62% da população adulta). Modelo de alcance: saturação exponencial sobre a parcela ativa do público (~35%), com frequência mínima natural do leilão (a entrega concentra impressões — nunca fica em 1×), CPM ajustado pelo tamanho da segmentação (público estreito custa mais no leilão, amplo custa menos) e fadiga de CTR/pressão de CPM quando a frequência passa de 3.
+    Simulação educativa: os números reais da Meta variam com leilão, criativo e concorrência. Público-base por estado derivado do Censo 2022 × penetração estimada da Meta (~62% da população adulta). Modelo de alcance: saturação exponencial sobre a parcela ativa do público (~35%), com frequência mínima natural do leilão (a entrega concentra impressões — nunca fica em 1×). O CPM médio usado é o que você informa; só a saturação (frequência acima de 3) encarece o CPM e reduz o CTR. A segmentação muda o tamanho do público, o alcance e a frequência.
   </footer>
 </div>
 
@@ -561,7 +561,7 @@ function audienceSize() {
 function simulate(audience, p) {
   var budget = Math.max(1, p.budget);
   var days = Math.min(180, Math.max(1, Math.round(p.days)));
-  var cpmBase = Math.max(0.5, p.cpm) * audienceCpmFactor(audience);
+  var cpmBase = Math.max(0.5, p.cpm); // CPM médio = o que você informou; só a saturação altera
   var ctrBase = Math.max(0.01, p.ctrPct) / 100;
   var conv = Math.max(0.001, p.convPct) / 100;
   var cprDirect = Math.max(0.05, p.cpr || 15);
@@ -718,13 +718,7 @@ function renderAudience(aud) {
   var pct = Math.max(0, Math.min(100, (Math.log10(Math.max(10000, aud)) - 4) * 25));
   $("audMeter").style.width = pct + "%";
   $("audVerdict").textContent = aud < 80000 ? "muito específico" : aud < 1000000 ? "bem definido" : aud < 20000000 ? "amplo" : "muito amplo";
-  var f = audienceCpmFactor(aud);
-  var fTxt = "×" + f.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  $("cpmAdj").textContent = f > 1.02
-    ? "Segmentação estreita encarece o CPM: " + fTxt
-    : f < 0.98
-      ? "Público amplo barateia o CPM: " + fTxt
-      : "CPM sem ajuste pela segmentação: " + fTxt;
+  $("cpmAdj").textContent = "CPM médio usado = o valor que você informou.";
 }
 
 /* ---------- RENDER: gráfico ---------- */
